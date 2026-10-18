@@ -81,14 +81,18 @@ def seed():
             db.session.commit()
             db.session.refresh(task)
 
-        # 用例（幂等：清旧的重新生成）
-        from models import Case
+        # 用例（幂等：清旧的重新生成）+ 真跑一遍（通过率非 0）
+        from models import Case, CaseRun
+        from runner import run_case
+        from demo_target.app import app as demo_app
+
         Case.query.filter_by(task_id=task.id).delete()
         contracts = Contract.query.filter_by(target_id=target.id).all()
         cc = [{'method': c.method, 'path': c.path,
                'fields': __import__('json').loads(c.fields_json or '[]')}
               for c in contracts]
         cases = generate_all(cc)
+        valid_cases = []
         for case in cases:
             case.task_id = task.id
             status, layer, reason = validate_case(case, cc)
@@ -96,11 +100,28 @@ def seed():
             case.invalid_layer = layer
             case.invalid_reason = reason
             db.session.add(case)
+            if status == 'valid':
+                valid_cases.append(case)
+        db.session.flush()
+
+        # 🔴 真跑：valid 用例打 demo_target（离线 test_client，不依赖外部服务）
+        run_count = 0
+        for case in valid_cases:
+            result = run_case(case, base_url='', offline_app=demo_app)
+            db.session.add(CaseRun(
+                case_id=case.id,
+                status_code=result['status_code'],
+                response_body=result['response_body'],
+                passed=result['passed'],
+                error=result['error'],
+                duration_ms=result['duration_ms'],
+            ))
+            if result['passed']:
+                run_count += 1
         db.session.commit()
 
-        # 模型输出 + 打分（n=5，模拟分数带轻微波动）
+        # 模型输出 + 打分（n=20，模拟分数带轻微波动 —— 一致率样本补到 ≥20）
         ModelOutput.query.filter_by(task_id=task.id).delete()
-        Score.query.filter_by(model_output_id=None).delete()
         outputs = []
         prompts = [
             ('健康检查返回什么', '{"status": "ok", "service": "rmb02"}'),
@@ -109,33 +130,41 @@ def seed():
             ('登录演示', '{"token": "tok-demo-0"}'),
             ('统计接口', '{"items": 2, "tokens": 1}'),
         ]
-        for i, (prompt, output) in enumerate(prompts):
+        # 扩到 20 条：5 条基础 + 15 条变体
+        all_prompts = list(prompts)
+        for i in range(15):
+            base = prompts[i % 5]
+            all_prompts.append((f'{base[0]}（变体{i}）', base[1]))
+        for i, (prompt, output) in enumerate(all_prompts):
+            high = i < 16   # 前 16 条机器高分，后 4 条低分（一致率有区分度）
+            total = 85.0 if high else 30.0
             mo = ModelOutput(task_id=task.id, prompt=prompt, output=output,
                              model='local-rule', run_index=0)
             db.session.add(mo)
             db.session.flush()
             db.session.add(Score(model_output_id=mo.id,
-                                 accuracy=80 + i * 2, relevance=85,
+                                 accuracy=total, relevance=85,
                                  format=90, hallucination=100,
-                                 total=round(80 + i * 2 * 0.4 + 85 * 0.3 + 90 * 0.2 + 100 * 0.1, 1),
-                                 run_index=0))
+                                 total=total, run_index=0))
             outputs.append(mo.id)
         db.session.commit()
 
-        # 标注（标注员 id=2 annotator）+ 结算（评测工程师 id=1）
-        for out_id in outputs[:4]:
+        # 标注（标注员 id=2 annotator，n=20：16 条 agree + 4 条 doubt）+ 结算
+        for i, out_id in enumerate(outputs):
+            verdict = 'agree' if i < 16 else 'doubt'
             if not Annotation.query.filter_by(model_output_id=out_id,
                                               annotator_id=2).first():
                 db.session.add(Annotation(model_output_id=out_id,
-                                          annotator_id=2, verdict='agree'))
+                                          annotator_id=2, verdict=verdict))
         if not Settlement.query.filter_by(annotator_id=2, task_id=task.id).first():
             db.session.add(Settlement(annotator_id=2, task_id=task.id,
-                                      case_count=4, unit_price=0.5, amount=2.0))
+                                      case_count=20, unit_price=0.5, amount=10.0))
         db.session.commit()
 
         # 🔴 控制台 GBK 不编 emoji，用纯文本（经验库铁律：中文/特殊字符落盘再读）
         print(f'[seed] demo ready: target={target.id} task={task.id} '
-              f'outputs={len(outputs)} annotations=4 settlement=2.0元')
+              f'cases={len(valid_cases)} passed={run_count} '
+              f'outputs={len(outputs)} annotations=20 settlement=10.0元')
 
 
 if __name__ == '__main__':

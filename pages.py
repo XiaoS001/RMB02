@@ -44,8 +44,20 @@ def register_pages_blueprint():
     @login_required('view_all')
     def annotate():
         from annotation import agreement_rate
+        from models import Annotation, ModelOutput
 
-        return render_template('annotate.html', agreement=agreement_rate())
+        # 🔴 待标注队列（产品闭环）：没标过的模型输出
+        annotated = {a.model_output_id for a in Annotation.query.all()}
+        pending = [mo for mo in ModelOutput.query.order_by(ModelOutput.id).all()
+                   if mo.id not in annotated]
+        return render_template(
+            'annotate.html',
+            agreement=agreement_rate(),
+            pending=[{
+                'id': mo.id, 'prompt': mo.prompt[:80], 'output': (mo.output or '')[:200],
+                'task_id': mo.task_id,
+            } for mo in pending],
+        )
 
     @bp.get('/report/<int:task_id>')
     @login_required('view_all')

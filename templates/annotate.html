@@ -4,8 +4,29 @@
 <h1>人工标注</h1>
 <p class="muted">对模型输出复核：通过 / 存疑 / 打回。结果写入 Annotation 表，不覆盖机器分。</p>
 <div class="card">
+  <h2>待标注队列（{{ pending|length }} 条等我标）</h2>
+  <table>
+    <thead><tr><th>ID</th><th>提示词</th><th>模型输出</th><th>操作</th></tr></thead>
+    <tbody id="queue">
+      {% if pending %}
+        {% for p in pending %}
+        <tr>
+          <td>{{ p.id }}</td>
+          <td>{{ p.prompt }}</td>
+          <td class="muted">{{ p.output[:80] }}{% if p.output|length > 80 %}…{% endif %}</td>
+          <td><button class="ghost" onclick="fillForm({{ p.id }}, '{{ p.prompt }}')">标注这条</button></td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr><td colspan="4" class="muted">没有待标注的模型输出（都标完了）</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+<div class="card">
+  <h2>复核表单</h2>
   <div class="row" style="margin-bottom:0.75rem;">
-    <input id="mo_id" placeholder="模型输出 ID（在任务看板里查）" style="flex:1;">
+    <input id="mo_id" placeholder="模型输出 ID（点队列里的「标注这条」自动填入）" style="flex:1;">
     <select id="verdict">
       <option value="agree">通过</option>
       <option value="doubt">存疑</option>
@@ -16,6 +37,31 @@
   </div>
   <div class="error" id="err" style="display:none;"></div>
   <div id="ok" style="display:none;color:#15803d;margin-top:0.5rem;"></div>
+  <script>
+  function fillForm(id, prompt) {
+    document.getElementById('mo_id').value = id;
+    document.getElementById('ok').style.display = 'none';
+    document.getElementById('err').style.display = 'none';
+  }
+  async function submitAnn() {
+    const r = await fetch('/api/annotations', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({model_output_id: parseInt(document.getElementById('mo_id').value),
+                            verdict: document.getElementById('verdict').value,
+                            note: document.getElementById('note').value || null}),
+    });
+    if (r.ok) {
+      document.getElementById('err').style.display='none';
+      document.getElementById('ok').style.display='block';
+      document.getElementById('ok').textContent = '标注成功';
+      setTimeout(()=>location.reload(), 800);
+    } else {
+      const d = await r.json();
+      document.getElementById('err').style.display='block';
+      document.getElementById('err').textContent = d.error || '提交失败';
+    }
+  }
+  </script>
 </div>
 <div class="card">
   <h2>一致率（机器分 vs 人工标注）</h2>

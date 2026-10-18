@@ -225,6 +225,23 @@ def register_api_blueprint():
 
         return jsonify(agreement_rate())
 
+    @bp.get('/api/annotations/pending')
+    @login_required('annotate')
+    def pending_annotations():
+        """🔴 待标注队列（产品闭环）：该标注员还没标过的模型输出。
+
+        标注员登录后应看到「有 N 条等我标」，点进去标 —— 不是手动输 ID。
+        """
+        from models import Annotation, ModelOutput
+
+        annotated = {a.model_output_id for a in Annotation.query.all()}
+        rows = ModelOutput.query.order_by(ModelOutput.id).all()
+        pending = [mo for mo in rows if mo.id not in annotated]
+        return jsonify([{
+            'id': mo.id, 'prompt': mo.prompt[:80], 'output': mo.output[:200],
+            'task_id': mo.task_id,
+        } for mo in pending])
+
     @bp.post('/api/settlements')
     @login_required('manage_targets')
     def create_settlement():
