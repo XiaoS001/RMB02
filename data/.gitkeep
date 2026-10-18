@@ -1,0 +1,1 @@
+# 保持 data/ 目录存在（app.py 顶层 create_app 连默认库需要目录在）
