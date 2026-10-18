@@ -72,14 +72,17 @@ def seed():
                                     confidence=c['confidence']))
         db.session.commit()
 
-        # 任务
+        # 任务（幂等）
         task = EvalTask.query.filter_by(name='演示评测任务').first()
         if task is None:
             task = EvalTask(target_id=target.id, name='演示评测任务',
-                            status='generated')
+                            status='executed')   # 🔴 跑完用例后 = executed，不是 generated
             db.session.add(task)
             db.session.commit()
             db.session.refresh(task)
+        else:
+            task.status = 'executed'   # 幂等重跑也保持 executed
+            db.session.commit()
 
         # 用例（幂等：清旧的重新生成）+ 真跑一遍（通过率非 0）
         from models import Case, CaseRun
@@ -149,22 +152,30 @@ def seed():
             outputs.append(mo.id)
         db.session.commit()
 
-        # 标注（标注员 id=2 annotator，n=20：16 条 agree + 4 条 doubt）+ 结算
-        for i, out_id in enumerate(outputs):
+        # 标注（标注员 id=2 annotator，n=17：16 agree + 1 doubt）—— 留 3 条不标
+        # 🔴 幂等 = 每次重跑得到相同结果：先清旧标注再按新逻辑标
+        #    否则旧的全量标注残留会让 pending 恒为 0（截图没法展示队列）
+        ann_outputs = {a.model_output_id for a in Annotation.query.filter_by(annotator_id=2).all()}
+        for a in Annotation.query.all():
+            if a.model_output_id in outputs:   # 只清本演示任务的
+                db.session.delete(a)
+        db.session.flush()
+        for i, out_id in enumerate(outputs[:17]):
             verdict = 'agree' if i < 16 else 'doubt'
-            if not Annotation.query.filter_by(model_output_id=out_id,
-                                              annotator_id=2).first():
-                db.session.add(Annotation(model_output_id=out_id,
-                                          annotator_id=2, verdict=verdict))
-        if not Settlement.query.filter_by(annotator_id=2, task_id=task.id).first():
-            db.session.add(Settlement(annotator_id=2, task_id=task.id,
-                                      case_count=20, unit_price=0.5, amount=10.0))
+            db.session.add(Annotation(model_output_id=out_id,
+                                      annotator_id=2, verdict=verdict))
+        # 结算：按已标 17 条（幂等：先清旧的）
+        old = Settlement.query.filter_by(annotator_id=2, task_id=task.id).all()
+        for s in old:
+            db.session.delete(s)
+        db.session.add(Settlement(annotator_id=2, task_id=task.id,
+                                  case_count=17, unit_price=0.5, amount=8.5))
         db.session.commit()
 
         # 🔴 控制台 GBK 不编 emoji，用纯文本（经验库铁律：中文/特殊字符落盘再读）
         print(f'[seed] demo ready: target={target.id} task={task.id} '
               f'cases={len(valid_cases)} passed={run_count} '
-              f'outputs={len(outputs)} annotations=20 settlement=10.0元')
+              f'outputs={len(outputs)} annotated=17/20 pending=3 settlement=8.5元')
 
 
 if __name__ == '__main__':
