@@ -1,23 +1,43 @@
 """阶段 1 · 契约抽取执行脚本。
 
 用法：
-    python extract_contracts.py
+    python extract_contracts.py [--source D:/path/to/RMB01]
 
 从 RMB01 抽取契约 → data/contract_rmb01.json
+🔴 源目录默认取环境变量 RMB01_DIR，否则取 --source 参数；
+   都没有且默认路径不存在 → 报错退出（不硬编码 Windows 路径，终验打回项）。
 
 🔴 只读约束：import RMB01 的 app 拿 url_map，**不起服务、不写库**。
-   import 会执行 RMB01/app.py 顶层 `app = create_app()`，这会建表（写库）——
-   所以这里用子进程 import，且注入 SQLALCHEMY_DATABASE_URI 指向临时内存库，
-   保证不碰 RMB01 的 data/rmb01.db。
+    import 会执行 RMB01/app.py 顶层 `app = create_app()`，这会建表（写库）——
+    所以这里用子进程 import，且注入 SQLALCHEMY_DATABASE_URI 指向临时内存库，
+    保证不碰 RMB01 的 data/rmb01.db。
 """
+import argparse
 import json
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-RMB01_DIR = r'D:\WbDshXM\RMB01'
 OUT = os.path.join(HERE, 'data', 'contract_rmb01.json')
+
+
+def resolve_rmb01_dir():
+    """解析 RMB01 目录：环境变量 RMB01_DIR > --source 参数 > 默认不存在则报错。"""
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--source', default=os.environ.get('RMB01_DIR'),
+                        help='RMB01 源码目录（无则从 RMB01_DIR 环境变量读）')
+    args, _ = parser.parse_known_args()
+    candidate = args.source or os.environ.get('RMB01_DIR', 'D:/WbDshXM/RMB01')
+    rmb01 = Path(candidate)
+    if not (rmb01 / 'docs' / 'API.md').exists():
+        print(f'❌ RMB01 源码不存在: {rmb01}（设 RMB01_DIR 或 --source 指向它）')
+        sys.exit(2)
+    return str(rmb01)
+
+
+RMB01_DIR = resolve_rmb01_dir()
 
 # 从 API.md 解析
 API_MD = os.path.join(RMB01_DIR, 'docs', 'API.md')
@@ -36,11 +56,11 @@ RMB01_PY = os.path.join(RMB01_DIR, 'venv', 'Scripts', 'python.exe')
 
 def run_url_map_harness():
     """子进程 import RMB01 app，打印 url_map 路由表（JSON）。"""
-    code = r'''
+    code = f'''
 import json, sys, os
 sys.stdout.reconfigure(encoding="utf-8")   # 中文安全
 sys.stderr.reconfigure(encoding="utf-8")   # import 时的 warning 也走 utf-8
-sys.path.insert(0, r"D:\WbDshXM\RMB01")
+sys.path.insert(0, {RMB01_DIR!r})
 os.environ["RMB01_DATABASE_URL"] = "sqlite:///:memory:"
 import config
 config.DATABASE_URL = "sqlite:///:memory:"

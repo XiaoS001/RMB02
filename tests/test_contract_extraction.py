@@ -1,6 +1,10 @@
 """契约抽取测试。"""
+import json
 import os
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -11,12 +15,26 @@ from contract_extractor import (  # noqa: E402
     merge_contracts,
 )
 
-API_MD = r'D:\WbDshXM\RMB01\docs\API.md'
-ADMIN_API = r'D:\WbDshXM\RMB01\admin_api.py'
-KB_API = r'D:\WbDshXM\RMB01\kb_api.py'
-AUTH_API = r'D:\WbDshXM\RMB01\auth.py'
+# 🔴 仓库内文件一律相对路径（CI clone 下来也有）
+_REPO = Path(__file__).resolve().parent.parent
+CONTRACT_JSON = _REPO / 'data' / 'contract_rmb01.json'
+
+# 🔴 外部源（RMB01）—— 环境不满足就 skip，不要 fail（终验打回项）
+#    默认找「仓库同级目录的 RMB01」（本机 D:\WbDshXM\RMB01 恰好满足）；
+#    找不到就 skip（CI / clone 环境没有 → 不 fail）
+_RMB01 = Path(os.environ.get('RMB01_DIR', str(_REPO.parent / 'RMB01')))
+API_MD = _RMB01 / 'docs' / 'API.md'
+ADMIN_API = _RMB01 / 'admin_api.py'
+KB_API = _RMB01 / 'kb_api.py'
+AUTH_API = _RMB01 / 'auth.py'
+
+needs_rmb01 = pytest.mark.skipif(
+    not (API_MD.exists() and ADMIN_API.exists()),
+    reason='需要外部 RMB01 源码（设 RMB01_DIR 指向它）；CI 无此目录',
+)
 
 
+@needs_rmb01
 def test_api_md_parses_endpoints():
     endpoints = extract_from_api_md(API_MD)
     assert len(endpoints) >= 20
@@ -24,6 +42,7 @@ def test_api_md_parses_endpoints():
     assert {'GET', 'POST', 'PUT', 'DELETE'} & methods
 
 
+@needs_rmb01
 def test_api_md_register_fields():
     endpoints = extract_from_api_md(API_MD)
     reg = next(e for e in endpoints if e['path'] == '/api/auth/register')
@@ -36,6 +55,7 @@ def test_api_md_register_fields():
     assert req['password'] is True
 
 
+@needs_rmb01
 def test_api_md_login_fields_from_json_example():
     endpoints = extract_from_api_md(API_MD)
     login = next(e for e in endpoints if e['path'] == '/api/auth/login')
@@ -44,6 +64,7 @@ def test_api_md_login_fields_from_json_example():
     assert 'password' in names
 
 
+@needs_rmb01
 def test_api_md_ask_fields():
     endpoints = extract_from_api_md(API_MD)
     ask = next(e for e in endpoints if e['path'] == '/api/kbs/<kb_id>/ask')
@@ -53,6 +74,7 @@ def test_api_md_ask_fields():
     assert 'use_agent' in names
 
 
+@needs_rmb01
 def test_api_md_query_string_stripped():
     endpoints = extract_from_api_md(API_MD)
     paths = [e['path'] for e in endpoints]
@@ -60,6 +82,7 @@ def test_api_md_query_string_stripped():
     assert not any('?' in p for p in paths)
 
 
+@needs_rmb01
 def test_merge_dedupes_api_md_and_url_map():
     api = extract_from_api_md(API_MD)
     url = [{'method': 'POST', 'path': '/api/auth/register', 'source': 'url_map'}]
@@ -69,6 +92,7 @@ def test_merge_dedupes_api_md_and_url_map():
     assert reg['confidence'] == 1.0
 
 
+@needs_rmb01
 def test_ast_function_scope_isolates_tenants_fields():
     """🔴 审查缺陷 1：AST 按函数作用域 —— /api/tenants 不再混入别的函数字段。"""
     ast = extract_from_ast([ADMIN_API])
@@ -84,6 +108,7 @@ def test_ast_function_scope_isolates_tenants_fields():
     assert 'password' not in fields
 
 
+@needs_rmb01
 def test_ast_function_scope_register_fields():
     """auth.py 的 api_register 只读 username/password/tenant_name。"""
     ast = extract_from_ast([AUTH_API])
@@ -97,6 +122,7 @@ def test_ast_function_scope_register_fields():
     assert 'tenant_id' not in fields  # 🔴 修复后不再读 tenant_id
 
 
+@needs_rmb01
 def test_ast_suggested_fields_not_in_allowed_set():
     """AST 字段进 suggested_fields，不进 fields（不进允许集）。"""
     ast = extract_from_ast([ADMIN_API])
@@ -145,10 +171,9 @@ def test_url_map_excludes_html_pages():
 
 
 def test_real_rmb01_url_map_has_no_pages():
-    """真实 RMB01：url_map 抽取的契约不含页面路由（读契约产物验证）。"""
-    import json
-
-    with open(r'D:\WbDshXM\RMB02\data\contract_rmb01.json', encoding='utf-8') as fh:
+    """真实契约产物：不含页面路由（读仓库内 contract_rmb01.json）。"""
+    assert CONTRACT_JSON.exists(), f'契约产物缺失: {CONTRACT_JSON}'
+    with open(CONTRACT_JSON, encoding='utf-8') as fh:
         data = json.load(fh)
     page_paths = {'/', '/login', '/kbs', '/org', '/platform'}
     for c in data:
@@ -157,9 +182,8 @@ def test_real_rmb01_url_map_has_no_pages():
 
 def test_all_contracts_have_confidence_and_source():
     """所有契约必须有 source + confidence（审查验收）。"""
-    import json
-
-    with open(r'D:\WbDshXM\RMB02\data\contract_rmb01.json', encoding='utf-8') as fh:
+    assert CONTRACT_JSON.exists(), f'契约产物缺失: {CONTRACT_JSON}'
+    with open(CONTRACT_JSON, encoding='utf-8') as fh:
         data = json.load(fh)
     for c in data:
         assert 'source' in c

@@ -9,22 +9,6 @@
   },
   {
     "method": "POST",
-    "path": "/api/ask",
-    "fields": [],
-    "suggested_fields": [],
-    "source": "api_md",
-    "confidence": 1.0
-  },
-  {
-    "method": "POST",
-    "path": "/api/agent/ask",
-    "fields": [],
-    "suggested_fields": [],
-    "source": "api_md",
-    "confidence": 1.0
-  },
-  {
-    "method": "POST",
     "path": "/api/auth/register",
     "fields": [
       {
@@ -84,14 +68,6 @@
     "confidence": 1.0
   },
   {
-    "method": "GET",
-    "path": "/api/kbs/<kb_id>",
-    "fields": [],
-    "suggested_fields": [],
-    "source": "api_md",
-    "confidence": 1.0
-  },
-  {
     "method": "POST",
     "path": "/api/kbs",
     "fields": [
@@ -104,6 +80,14 @@
         "required": false
       }
     ],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "GET",
+    "path": "/api/kbs/<kb_id>",
+    "fields": [],
     "suggested_fields": [],
     "source": "api_md",
     "confidence": 1.0
@@ -166,6 +150,22 @@
         "required": false
       }
     ],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "POST",
+    "path": "/api/ask",
+    "fields": [],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent/ask",
+    "fields": [],
     "suggested_fields": [],
     "source": "api_md",
     "confidence": 1.0
@@ -235,15 +235,5 @@
     "suggested_fields": [],
     "source": "api_md",
     "confidence": 1.0
-  },
-  {
-    "method": "POST",
-    "path": "/api/tenants",
-    "fields": [],
-    "suggested_fields": [
-      "name"
-    ],
-    "source": "ast",
-    "confidence": 0.2
   }
 ]
