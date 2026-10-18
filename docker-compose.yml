@@ -1,0 +1,23 @@
+services:
+  rmb02:
+    build: .
+    image: rmb02:local
+    container_name: rmb02
+    ports:
+      - "5102:5102"
+    environment:
+      - RMB02_PORT=5102
+      - RMB02_API_KEY=${RMB02_API_KEY:-}
+      - RMB02_BASE_URL=${RMB02_BASE_URL:-https://developer.amd.com.cn/radeon/api/v1}
+      - RMB02_MODEL=${RMB02_MODEL:-DeepSeek-V4-Flash}
+    volumes:
+      - rmb02-data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:5102/healthz', timeout=3).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  rmb02-data:

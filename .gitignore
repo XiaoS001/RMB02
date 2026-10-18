@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# 虚拟环境
+venv/
+.venv/
+
+# 测试缓存
+.pytest_cache/
+
+# 数据与产物
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+
+# 调试残留
+_dbg.*
+_*debug*
+*.tmp
+_dump_*.py
+_tmp_*.txt
+_tmp_*.ps1
+
+# 截图产物（screenshots/ 保留 PNG 作为演示证据；render/ 是临时渲染）
+render/
+screenshots/*.html
+screenshots/_*.png

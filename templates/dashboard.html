@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}首页 · RMB02{% endblock %}
+{% block content %}
+<h1>评测任务列表</h1>
+<p class="muted">任务 → 用例 → 打分 → 标注 → 看板，全流程可视化。</p>
+<div class="card">
+  <div class="row" style="margin-bottom:0.75rem;">
+    <select id="target_kind">
+      <option value="offline">离线靶子（demo_target）</option>
+      <option value="http">HTTP 靶子</option>
+    </select>
+    <input id="target_name" placeholder="任务名（默认：自动生成用例任务）" style="flex:1;">
+    <button onclick="createTask()">新建任务</button>
+  </div>
+  <div class="error" id="err" style="display:none;"></div>
+  <table>
+    <thead><tr><th>ID</th><th>名称</th><th>状态</th><th>通过率</th><th>操作</th></tr></thead>
+    <tbody id="tbody">
+      {% if tasks %}
+        {% for t in tasks %}
+        <tr>
+          <td>{{ t.id }}</td><td>{{ t.name }}</td>
+          <td><span class="badge blue">{{ t.status }}</span></td>
+          <td>
+            {% if t.pass_rate.pass_rate is none %}
+              <span class="badge gray">无数据</span>
+            {% elif t.pass_rate.pass_rate >= 60 %}
+              <span class="badge green">{{ t.pass_rate.pass_rate }}% (n={{ t.pass_rate.n }})</span>
+            {% else %}
+              <span class="badge red">{{ t.pass_rate.pass_rate }}% (n={{ t.pass_rate.n }})</span>
+            {% endif %}
+          </td>
+          <td><a class="btn ghost" href="/report/{{ t.id }}">看板</a></td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr><td colspan="5" class="muted">还没有任务，点「新建任务」开始</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+<div class="card">
+  <h2>平台能力</h2>
+  <p>· 契约抽取：从 <code>docs/API.md</code> / <code>url_map</code> / 源码 AST 抽接口字段表</p>
+  <p>· 三层用例校验：接口存在性 → 字段合法性 → 断言可执行性（invalid 不参与统计）</p>
+  <p>· 四维度打分：准确性 / 相关性 / 格式合规 / 幻觉（无证据 N/A）</p>
+  <p>· 人工标注与按条结算：Annotation 与 Score 分表，机器分不覆盖人工</p>
+</div>
+<script>
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  return r;
+}
+async function createTask() {
+  const r = await fetch('/api/targets', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name: document.getElementById('target_name').value || '演示靶子',
+                          base_url: 'offline://demo', kind: 'offline'}),
+  });
+  if (!r.ok) { const d = await r.json(); document.getElementById('err').style.display='block';
+               document.getElementById('err').textContent = d.error || '建靶子失败'; return; }
+  const t = await r.json();
+  // 存契约（demo_target 的 5 个接口）
+  const contracts = [
+    {method:'GET', path:'/healthz', fields:[], source:'api_md', confidence:1.0},
+    {method:'POST', path:'/api/echo', fields:[{name:'name',required:true}], source:'api_md', confidence:1.0},
+    {method:'GET', path:'/api/items/<item_id>', fields:[], source:'url_map', confidence:0.5},
+    {method:'POST', path:'/api/login', fields:[{name:'username',required:true},{name:'password',required:true}], source:'api_md', confidence:1.0},
+    {method:'GET', path:'/api/secure/stats', fields:[], source:'url_map', confidence:0.5},
+  ];
+  await fetch(`/api/targets/${t.id}/contracts`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(contracts)});
+  const g = await fetch(`/api/targets/${t.id}/generate-cases`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name: document.getElementById('target_name').value || '演示任务'})});
+  if (!g.ok) { document.getElementById('err').textContent = '生成失败'; return; }
+  loadTasks();
+}
+async function loadTasks() {
+  const r = await fetch('/api/dashboard/tasks');
+  if (r.status === 401) { location = '/login'; return; }
+  const tasks = await r.json();
+  const tb = document.getElementById('tbody');
+  if (!tasks.length) { tb.innerHTML = '<tr><td colspan="5" class="muted">还没有任务，点「新建任务」开始</td></tr>'; return; }
+  tb.innerHTML = tasks.map(t => {
+    const pr = t.pass_rate;
+    const rate = pr.pass_rate == null ? '—' : pr.pass_rate + '% (n=' + pr.n + ')';
+    const badge = pr.pass_rate == null ? '<span class="badge gray">无数据</span>'
+      : (pr.pass_rate >= 60 ? '<span class="badge green">' + rate + '</span>'
+                             : '<span class="badge red">' + rate + '</span>');
+    return '<tr><td>' + t.id + '</td><td>' + t.name + '</td><td><span class="badge blue">' + t.status + '</span></td><td>' + badge + '</td>' +
+           '<td><a class="btn ghost" href="/dashboard?task=' + t.id + '">看板</a></td></tr>';
+  }).join('');
+}
+loadTasks();
+</script>
+{% endblock %}

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}RMB02 评测平台{% endblock %}</title>
+  <style>
+    :root { --fg:#1f2933; --muted:#6b7280; --accent:#2563eb; --bg:#f8fafc; --card:#fff; }
+    * { box-sizing: border-box; margin: 0; }
+    body { font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+           background: var(--bg); color: var(--fg); min-height: 100vh; }
+    .nav { background: var(--card); border-bottom: 1px solid #e5e7eb; padding: 0.75rem 1.5rem;
+           display: flex; gap: 1.25rem; align-items: center; }
+    .nav a { color: var(--fg); text-decoration: none; font-weight: 500; }
+    .nav a:hover { color: var(--accent); }
+    .nav .brand { font-weight: 700; font-size: 1.1rem; }
+    .nav .spacer { flex: 1; }
+    .container { max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+    .card { background: var(--card); border: 1px solid #e5e7eb; border-radius: 8px;
+            padding: 1.25rem 1.5rem; margin-bottom: 1rem; }
+    h1 { font-size: 1.4rem; margin-bottom: 0.75rem; }
+    h2 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+    .muted { color: var(--muted); font-size: 0.85rem; }
+    .row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+    button, .btn { background: var(--accent); color: #fff; border: 0; border-radius: 6px;
+                   padding: 0.45rem 0.9rem; cursor: pointer; font-size: 0.9rem; }
+    .btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+    input, select, textarea { border: 1px solid #d1d5db; border-radius: 6px; padding: 0.45rem 0.6rem;
+                              font-size: 0.9rem; font-family: inherit; }
+    table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; }
+    th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; }
+    th { background: #f3f4f6; font-weight: 600; }
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px;
+             font-size: 0.75rem; font-weight: 600; }
+    .badge.green { background: #dcfce7; color: #15803d; }
+    .badge.red { background: #fee2e2; color: #b91c1c; }
+    .badge.blue { background: #dbeafe; color: #1d4ed8; }
+    .badge.gray { background: #f3f4f6; color: #374151; }
+    .error { color: #b91c1c; margin-top: 0.5rem; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <span class="brand">RMB02 · AI 评测平台</span>
+    {% if current_user %}
+      <a href="/dashboard">首页</a>
+      <a href="/tasks">任务</a>
+      <a href="/annotate">标注</a>
+      <span class="spacer"></span>
+      <span class="muted">{{ current_user.username }}（{{ current_user.role }}）</span>
+      <a href="/api/auth/logout" onclick="fetch(this.href,{method:'POST'}).then(()=>location='/login');return false;">退出</a>
+    {% else %}
+      <span class="spacer"></span>
+      <a href="/login">登录</a>
+    {% endif %}
+  </nav>
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

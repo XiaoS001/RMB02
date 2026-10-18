@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}标注 · RMB02{% endblock %}
+{% block content %}
+<h1>人工标注</h1>
+<p class="muted">对模型输出复核：通过 / 存疑 / 打回。结果写入 Annotation 表，不覆盖机器分。</p>
+<div class="card">
+  <div class="row" style="margin-bottom:0.75rem;">
+    <input id="mo_id" placeholder="模型输出 ID（在任务看板里查）" style="flex:1;">
+    <select id="verdict">
+      <option value="agree">通过</option>
+      <option value="doubt">存疑</option>
+      <option value="reject">打回</option>
+    </select>
+    <input id="note" placeholder="备注（可选）" style="flex:1;">
+    <button onclick="submitAnn()">提交标注</button>
+  </div>
+  <div class="error" id="err" style="display:none;"></div>
+  <div id="ok" style="display:none;color:#15803d;margin-top:0.5rem;"></div>
+</div>
+<div class="card">
+  <h2>一致率（机器分 vs 人工标注）</h2>
+  <div id="agree">
+    {% if agreement.rate is none %}
+      暂无标注（n=0）
+    {% else %}
+      n={{ agreement.n }} · agreed={{ agreement.agreed }} · <b>一致率 {{ agreement.rate }}%</b>
+      {% if agreement.skipped_no_score %} · <span class="muted">（{{ agreement.skipped_no_score }} 条无机器分未计入）</span>{% endif %}
+    {% endif %}
+  </div>
+  <script>
+  (async () => {
+    const r = await fetch('/api/agreement-rate');
+    if (r.status === 401) { location = '/login'; return; }
+    const d = await r.json();
+    const rate = d.rate == null ? '暂无标注' : d.rate + '%';
+    document.getElementById('agree').innerHTML =
+      'n=' + d.n + ' · agreed=' + d.agreed + ' · <b>一致率 ' + rate + '</b>' +
+      (d.skipped_no_score ? ' · <span class="muted">（' + d.skipped_no_score + ' 条无机器分未计入）</span>' : '');
+  })();
+  async function submitAnn() {
+    const r = await fetch('/api/annotations', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({model_output_id: parseInt(document.getElementById('mo_id').value),
+                            verdict: document.getElementById('verdict').value,
+                            note: document.getElementById('note').value || null}),
+    });
+    if (r.ok) {
+      document.getElementById('err').style.display='none';
+      document.getElementById('ok').style.display='block';
+      document.getElementById('ok').textContent = '标注成功';
+      setTimeout(()=>location.reload(), 800);
+    } else {
+      const d = await r.json();
+      document.getElementById('err').style.display='block';
+      document.getElementById('err').textContent = d.error || '提交失败';
+    }
+  }
+  </script>
+</div>
+{% endblock %}

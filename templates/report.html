@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}任务报告 · RMB02{% endblock %}
+{% block content %}
+<h1>任务报告</h1>
+<p class="muted">任务 #{{ task_id }} · 维度趋势 · 标注一致率 · 结算工作量</p>
+<div class="card">
+  <h2>各维度平均分</h2>
+  <div id="dims">
+    {% if dims.n == 0 %}
+      <span class="muted">还没有打分数据（n=0）</span>
+    {% else %}
+      <p>n={{ dims.n }}</p>
+      <table><thead><tr><th>维度</th><th>平均分</th><th>n</th></tr></thead><tbody>
+      {% for k, v in dims.dimensions.items() %}
+        <tr><td>{{ k }}</td><td>{{ v.mean if v.mean is not none else 'N/A' }}</td><td>{{ v.n }}</td></tr>
+      {% endfor %}
+      </tbody></table>
+    {% endif %}
+  </div>
+</div>
+<div class="card">
+  <h2>标注一致率</h2>
+  <div id="agree">
+    {% if agreement.rate is none %}
+      暂无标注（n=0）
+    {% else %}
+      n={{ agreement.n }} · agreed={{ agreement.agreed }} · <b>{{ agreement.rate }}%</b>
+      {% if agreement.skipped_no_score %} · <span class="muted">（{{ agreement.skipped_no_score }} 条无机器分未计入）</span>{% endif %}
+    {% endif %}
+  </div>
+</div>
+<div class="card">
+  <h2>标注员工作量与应付金额</h2>
+  <table><thead><tr><th>标注员</th><th>标注条数</th><th>应付金额（元）</th></tr></thead>
+  <tbody id="wl">
+    {% if workload %}
+      {% for x in workload %}
+        <tr><td>{{ x.username }}</td><td>{{ x.total_cases }}</td><td>{{ x.total_amount }}</td></tr>
+      {% endfor %}
+    {% else %}
+      <tr><td colspan="3" class="muted">暂无结算</td></tr>
+    {% endif %}
+  </tbody></table>
+</div>
+<script>
+const taskId = {{ task_id }};
+(async () => {
+  const base = '';
+  const [d, a, w] = await Promise.all([
+    fetch('/api/dashboard/tasks/' + taskId + '/dimensions').then(r => r.json()),
+    fetch('/api/dashboard/agreement').then(r => r.json()),
+    fetch('/api/dashboard/workload').then(r => r.json()),
+  ]);
+  if (d.n === 0) {
+    document.getElementById('dims').innerHTML = '<span class="muted">还没有打分数据（n=0）</span>';
+  } else {
+    document.getElementById('dims').innerHTML =
+      '<p>n=' + d.n + '</p><table><thead><tr><th>维度</th><th>平均分</th><th>n</th></tr></thead><tbody>' +
+      Object.entries(d.dimensions).map(([k, v]) =>
+        '<tr><td>' + k + '</td><td>' + (v.mean == null ? 'N/A' : v.mean) + '</td><td>' + v.n + '</td></tr>'
+      ).join('') + '</tbody></table>';
+  }
+  const rate = a.rate == null ? '暂无标注' : a.rate + '%';
+  document.getElementById('agree').innerHTML =
+    'n=' + a.n + ' · agreed=' + a.agreed + ' · <b>' + rate + '</b>' +
+    (a.skipped_no_score ? ' · <span class="muted">（' + a.skipped_no_score + ' 条无机器分未计入）</span>' : '');
+  const wl = document.getElementById('wl');
+  if (!w.length) { wl.innerHTML = '<tr><td colspan="3" class="muted">暂无结算</td></tr>'; }
+  else {
+    wl.innerHTML = w.map(x => '<tr><td>' + x.username + '</td><td>' + x.total_cases +
+      '</td><td>' + x.total_amount + '</td></tr>').join('');
+  }
+})();
+</script>
+{% endblock %}

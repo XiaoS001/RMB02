@@ -1,0 +1,249 @@
+[
+  {
+    "method": "GET",
+    "path": "/healthz",
+    "fields": [],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "POST",
+    "path": "/api/ask",
+    "fields": [],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent/ask",
+    "fields": [],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/register",
+    "fields": [
+      {
+        "name": "username",
+        "required": true
+      },
+      {
+        "name": "password",
+        "required": true
+      }
+    ],
+    "suggested_fields": [
+      "tenant_name"
+    ],
+    "source": "ast",
+    "confidence": 0.2
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/login",
+    "fields": [
+      {
+        "name": "username",
+        "required": false
+      },
+      {
+        "name": "password",
+        "required": false
+      }
+    ],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/logout",
+    "fields": [],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "GET",
+    "path": "/api/auth/me",
+    "fields": [],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "GET",
+    "path": "/api/kbs",
+    "fields": [],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "GET",
+    "path": "/api/kbs/<kb_id>",
+    "fields": [],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "POST",
+    "path": "/api/kbs",
+    "fields": [
+      {
+        "name": "name",
+        "required": false
+      },
+      {
+        "name": "description",
+        "required": false
+      }
+    ],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/kbs/<kb_id>",
+    "fields": [],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "GET",
+    "path": "/api/kbs/<kb_id>/documents",
+    "fields": [],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "POST",
+    "path": "/api/kbs/<kb_id>/documents",
+    "fields": [
+      {
+        "name": "title",
+        "required": false
+      },
+      {
+        "name": "content",
+        "required": false
+      }
+    ],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/documents/<document_id>",
+    "fields": [],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "POST",
+    "path": "/api/kbs/<kb_id>/ask",
+    "fields": [
+      {
+        "name": "question",
+        "required": true
+      },
+      {
+        "name": "top_k",
+        "required": false
+      },
+      {
+        "name": "use_agent",
+        "required": false
+      }
+    ],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "GET",
+    "path": "/api/org/billing",
+    "fields": [],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "GET",
+    "path": "/api/org/members",
+    "fields": [],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "PUT",
+    "path": "/api/org/members/<user_id>/role",
+    "fields": [
+      {
+        "name": "role",
+        "required": false
+      }
+    ],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "GET",
+    "path": "/api/platform/tenants",
+    "fields": [],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "GET",
+    "path": "/api/platform/usage-ranking",
+    "fields": [],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "PUT",
+    "path": "/api/platform/tenants/<tenant_id>/plan",
+    "fields": [
+      {
+        "name": "plan",
+        "required": false
+      }
+    ],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "GET",
+    "path": "/api/platform/plans",
+    "fields": [],
+    "suggested_fields": [],
+    "source": "api_md",
+    "confidence": 1.0
+  },
+  {
+    "method": "POST",
+    "path": "/api/tenants",
+    "fields": [],
+    "suggested_fields": [
+      "name"
+    ],
+    "source": "ast",
+    "confidence": 0.2
+  }
+]
